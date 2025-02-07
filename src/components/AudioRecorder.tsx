@@ -22,7 +22,7 @@ const AudioRecorder = ({ onTranscriptionUpdate }: AudioRecorderProps) => {
         const whisperTranscriber = await pipeline(
           "automatic-speech-recognition",
           "openai/whisper-tiny.en",
-          { device: "cpu" }
+          { device: "wasm" }  // Changed from "cpu" to "wasm"
         );
         setTranscriber(whisperTranscriber);
         console.log("Transcriber initialized successfully");
