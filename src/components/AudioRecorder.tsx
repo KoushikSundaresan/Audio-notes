@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { Mic, Square, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -44,7 +45,21 @@ const AudioRecorder = ({ onTranscriptionUpdate }: AudioRecorderProps) => {
 
     try {
       console.log("Processing audio chunk...");
-      const result = await transcriber(audioBlob);
+      // Convert blob to array buffer
+      const arrayBuffer = await audioBlob.arrayBuffer();
+      // Create an audio context
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      // Decode the audio data
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+      // Convert to Float32Array
+      const float32Array = audioBuffer.getChannelData(0);
+      
+      // Process with transcriber
+      const result = await transcriber(float32Array, {
+        chunk_length_s: 5,
+        stride_length_s: 1
+      });
+      
       console.log("Transcription result:", result);
       
       if (result.text) {
