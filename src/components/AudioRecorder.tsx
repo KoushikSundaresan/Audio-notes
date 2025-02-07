@@ -21,8 +21,8 @@ const AudioRecorder = ({ onTranscriptionUpdate }: AudioRecorderProps) => {
         console.log("Initializing transcriber...");
         const whisperTranscriber = await pipeline(
           "automatic-speech-recognition",
-          "openai/whisper-tiny.en",
-          { device: "wasm" }  // Changed from "cpu" to "wasm"
+          "onnx-community/whisper-tiny.en",
+          { device: "wasm" }
         );
         setTranscriber(whisperTranscriber);
         console.log("Transcriber initialized successfully");
