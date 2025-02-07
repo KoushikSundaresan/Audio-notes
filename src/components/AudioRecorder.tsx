@@ -1,27 +1,79 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Mic, Square, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
+import { pipeline } from "@huggingface/transformers";
 
-const AudioRecorder = () => {
+interface AudioRecorderProps {
+  onTranscriptionUpdate: (text: string) => void;
+}
+
+const AudioRecorder = ({ onTranscriptionUpdate }: AudioRecorderProps) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [transcriber, setTranscriber] = useState<any>(null);
   const mediaRecorder = useRef<MediaRecorder | null>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const initTranscriber = async () => {
+      try {
+        console.log("Initializing transcriber...");
+        const whisperTranscriber = await pipeline(
+          "automatic-speech-recognition",
+          "openai/whisper-tiny.en",
+          { device: "cpu" }
+        );
+        setTranscriber(whisperTranscriber);
+        console.log("Transcriber initialized successfully");
+      } catch (error) {
+        console.error("Error initializing transcriber:", error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to initialize speech recognition. Please try again.",
+        });
+      }
+    };
+
+    initTranscriber();
+  }, [toast]);
+
+  const processAudioChunk = async (audioBlob: Blob) => {
+    if (!transcriber) return;
+
+    try {
+      console.log("Processing audio chunk...");
+      const result = await transcriber(audioBlob);
+      console.log("Transcription result:", result);
+      
+      if (result.text) {
+        onTranscriptionUpdate(result.text);
+      }
+    } catch (error) {
+      console.error("Error processing audio:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to process audio. Please try again.",
+      });
+    }
+  };
 
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaRecorder.current = new MediaRecorder(stream);
       
-      mediaRecorder.current.ondataavailable = (e) => {
+      mediaRecorder.current.ondataavailable = async (e) => {
         if (e.data.size > 0) {
-          console.log("Audio data available:", e.data);
-          // Here we'll later implement the processing logic
+          console.log("Audio data available, processing chunk...");
+          await processAudioChunk(e.data);
         }
       };
 
-      mediaRecorder.current.start();
+      // Set to capture audio in smaller chunks (every 5 seconds)
+      mediaRecorder.current.start(5000);
       setIsRecording(true);
       
       toast({
